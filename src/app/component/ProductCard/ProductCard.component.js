@@ -16,7 +16,14 @@ import TextPlaceholder from 'Component/TextPlaceholder';
 import ProductPrice from 'Component/ProductPrice';
 import Image from 'Component/Image';
 import AddToCart from 'Component/AddToCart';
+import ProductWishlistButton from 'Component/ProductWishlistButton';
+import ProductReviewRating from 'Component/ProductReviewRating';
 import { ProductType, FilterType } from 'Type/ProductList';
+import { getVariantsIndexes } from 'Util/Product';
+import { getReviewText } from 'Util/Review';
+import { getTabIndex } from 'Util/Link';
+import { HashLink } from 'react-router-hash-link';
+import { convertKeyValueObjectToQueryString } from 'Util/Url';
 import './ProductCard.style';
 
 /**
@@ -24,25 +31,42 @@ import './ProductCard.style';
  * @class ProductCard
  */
 class ProductCard extends Component {
-    getCurrentVariantIndex() {
-        const { product: { variants }, customFilters } = this.props;
-        const customFiltersExist = customFilters && Object.keys(customFilters).length;
+    constructor(props) {
+        super(props);
 
-        if (variants && customFiltersExist) {
-            for (let i = 0; i < variants.length; i++) {
-                const { product } = variants[ i ];
+        this.handleConfigurableClick = this.handleConfigurableClick.bind(this);
+    }
 
-                const isCorrectVariant = Object.keys(customFilters).every(filterKey => (
-                    customFilters[ filterKey ].find(value => +value === product[ filterKey ])
-                ));
+    getConfigurableParameters() {
+        const { product: { variants = [] }, customFilters = {} } = this.props;
+        const filterKeys = Object.keys(customFilters);
 
-                if (isCorrectVariant) return i;
-            }
+        if (filterKeys.length < 0) return { indexes: [], parameters: {} };
 
-            return 0;
-        }
+        const indexes = getVariantsIndexes(variants, customFilters);
+        const [index] = indexes;
 
-        return 0;
+        if (!variants[index]) return { indexes: [], parameters: {} };
+        const { attributes } = variants[index];
+
+        const parameters = Object.entries(attributes)
+            .reduce((parameters, [key, { attribute_value }]) => {
+                if (filterKeys.includes(key)) return { ...parameters, [key]: attribute_value };
+                return parameters;
+            }, {});
+
+        return { indexes, index, parameters };
+    }
+
+    getLinkTo(parameters) {
+        const { product: { url_key }, product } = this.props;
+
+        if (!url_key) return undefined;
+        return {
+            pathname: `/product/${ url_key }`,
+            state: { product },
+            search: convertKeyValueObjectToQueryString(parameters)
+        };
     }
 
     /**
@@ -51,89 +75,123 @@ class ProductCard extends Component {
      * @return {void}
      */
     getThumbnail(currentVariantIndex) {
-        const { product: { thumbnail, variants } } = this.props;
-        const variantThumbnail = variants ? variants[ currentVariantIndex ].product.thumbnail : null;
-        return variantThumbnail || thumbnail;
+        const { product: { thumbnail: { path } = {}, variants = [] } } = this.props;
+
+        if (variants[currentVariantIndex] === undefined) return path;
+        return variants[currentVariantIndex].thumbnail.path;
     }
 
-    addOrConfigureProduct(variantIndex, linkTo) {
-        const { customFilters, product: { url_key, variants, type_id } } = this.props;
-
-        if (variants && type_id === 'configurable') {
-            const correctVariants = variants.reduce((correctVariants, { product }) => {
-                const isCorrectVariant = Object.keys(customFilters).every(filterKey => (
-                    customFilters[ filterKey ].find(value => +value === product[ filterKey ])
-                ));
-
-                if (isCorrectVariant) correctVariants.push(product);
-
-                return correctVariants;
-            }, []);
-
-            if (correctVariants.length !== 1) {
-                return (
-                    <Link to={ linkTo } tabIndex={ url_key ? '0' : '-1' }>
-                        <span>Configure Product</span>
-                    </Link>
-                );
-            }
-        }
-
-        return <AddToCart onClick={ () => this.addProduct(variantIndex) } fullWidth />;
-    }
-
-    /**
-     * Dispatch add product to cart
-     * @return {void}
-     */
-    addProduct(configurableVariantIndex) {
+    handleConfigurableClick() {
         const {
-            addProduct,
             product,
-            product: { variants }
+            updateProductToBeRemovedAfterAdd,
+            wishlistItem
         } = this.props;
 
-        if (variants) {
-            const configurableProduct = {
-                ...product,
-                configurableVariantIndex
-            };
-
-            addProduct({ product: configurableProduct, quantity: 1 });
-        } else {
-            addProduct({ product, quantity: 1 });
+        if (wishlistItem && updateProductToBeRemovedAfterAdd) {
+            return updateProductToBeRemovedAfterAdd({ product });
         }
 
         return null;
+    }
+
+    renderAddOrConfigureProduct(variantIndexes = [], linkTo, price) {
+        const { product, product: { url_key, type_id } } = this.props;
+
+        if (!price) return (<TextPlaceholder length="medium" />);
+
+        if (type_id === 'configurable' && variantIndexes.length !== 1) {
+            return (
+                <Link
+                  to={ linkTo }
+                  tabIndex={ getTabIndex(url_key) }
+                  onClick={ this.handleConfigurableClick }
+                >
+                    <span>{ __('Configure Product') }</span>
+                </Link>
+            );
+        }
+
+        if (type_id === 'grouped') {
+            return (
+                <Link to={ linkTo } tabIndex={ getTabIndex(url_key) }>
+                    <span>{ __('View details') }</span>
+                </Link>
+            );
+        }
+
+        const [index] = variantIndexes;
+        return (
+            <AddToCart
+              product={ product }
+              fullWidth
+              removeWishlistItem
+              configurableVariantIndex={ index }
+            />
+        );
+    }
+
+    renderAddToWishlistButton(notReady) {
+        const { product } = this.props;
+        if (notReady) return <TextPlaceholder length="medium" />;
+
+        return (
+            <ProductWishlistButton
+              product={ product }
+              fullWidth
+            />
+        );
+    }
+
+    renderReviewSummary(linkTo) {
+        const { product: { review_summary, url_key } } = this.props;
+
+        if (!review_summary || !review_summary.review_count) return null;
+
+        const _linkTo = { ...linkTo, hash: '#reviews' };
+        const reviewText = getReviewText(review_summary.review_count);
+
+        return (
+            <div block="ProductCard" elem="ReviewSummary">
+                <ProductReviewRating summary={ review_summary.rating_summary } />
+                <HashLink smooth to={ _linkTo } tabIndex={ getTabIndex(url_key) }>
+                    <span>{ `${review_summary.review_count} ${reviewText}` }</span>
+                </HashLink>
+            </div>
+        );
     }
 
     render() {
         const {
             product: {
                 name,
-                price,
                 url_key,
-                brand
+                variants = [],
+                attributes = {}
             },
             product,
-            arePlaceholdersShown
+            arePlaceholdersShown,
+            mix
         } = this.props;
 
-        const variantIndex = this.getCurrentVariantIndex();
-        const thumbnail = this.getThumbnail(variantIndex);
+        const { brand: { attribute_value: brand } = {} } = attributes;
+        const { index, indexes, parameters } = this.getConfigurableParameters();
+        const thumbnail = this.getThumbnail(index);
         const TagName = url_key ? Link : 'div';
         const isLoading = !url_key;
-        const linkTo = url_key ? { pathname: `/product/${ url_key }`, state: { product, variantIndex } } : undefined;
+        const linkTo = this.getLinkTo(parameters);
+
+        const { price } = variants[index] || product;
 
         return (
-            <li block="ProductCard" mods={ { isLoading } }>
+            <li block="ProductCard" mods={ { isLoading } } mix={ mix }>
                 <TagName
                   to={ linkTo }
-                  tabIndex={ url_key ? '0' : '-1' }
+                  tabIndex={ getTabIndex(url_key) }
                 >
                     <Image
-                      src={ thumbnail ? `/media/jpg/catalog/product${ thumbnail }` : null }
-                      alt="Product Thumbnail"
+                      src={ thumbnail && `/media/jpg/catalog/product${ thumbnail }` }
+                      alt={ __('Product Thumbnail') }
                       arePlaceholdersShown={ arePlaceholdersShown }
                       showGreyPlaceholder={ !url_key }
                     />
@@ -143,11 +201,14 @@ class ProductCard extends Component {
                     <h4><TextPlaceholder content={ name } /></h4>
                     { price && <ProductPrice price={ price } /> }
                 </TagName>
+                { this.renderReviewSummary(linkTo) }
                 <div block="ProductCard" elem="Actions">
-                    { price
-                        ? this.addOrConfigureProduct(variantIndex, linkTo)
-                        : <TextPlaceholder length="medium" />
-                    }
+                    { this.renderAddOrConfigureProduct(indexes, linkTo, price) }
+                    <ProductWishlistButton
+                      product={ product }
+                      fullWidth
+                      isReady={ !!price }
+                    />
                 </div>
             </li>
         );
@@ -156,14 +217,21 @@ class ProductCard extends Component {
 
 ProductCard.propTypes = {
     product: ProductType.isRequired,
-    addProduct: PropTypes.func.isRequired,
     customFilters: FilterType,
-    arePlaceholdersShown: PropTypes.bool
+    arePlaceholdersShown: PropTypes.bool,
+    wishlistItem: PropTypes.bool,
+    updateProductToBeRemovedAfterAdd: PropTypes.func.isRequired,
+    mix: PropTypes.shape({
+        block: PropTypes.string,
+        elem: PropTypes.string
+    })
 };
 
 ProductCard.defaultProps = {
     customFilters: {},
-    arePlaceholdersShown: false
+    arePlaceholdersShown: false,
+    wishlistItem: false,
+    mix: {}
 };
 
 export default ProductCard;

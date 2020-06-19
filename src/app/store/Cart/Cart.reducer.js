@@ -10,70 +10,58 @@
  */
 
 import BrowserDatabase from 'Util/BrowserDatabase';
+import { getIndexedParameteredProducts } from 'Util/Product';
 import {
-    ADD_PRODUCT_TO_CART,
     UPDATE_TOTALS,
-    REMOVE_PRODUCT_FROM_CART
+    UPDATE_ALL_PRODUCTS_IN_CART
 } from './Cart.action';
 
-const initialState = {
-    products: BrowserDatabase.getItem('cart') || {},
-    totals: {}
+export const PRODUCTS_IN_CART = 'cart_products';
+export const CART_TOTALS = 'cart_totals';
+
+const updateCartTotals = (action) => {
+    const { cartData: cartTotals } = action;
+
+    BrowserDatabase.setItem(
+        cartTotals,
+        CART_TOTALS
+    );
+
+    return { cartTotals };
 };
 
-const getProductId = ({ id, variants, configurableVariantIndex }) => (typeof configurableVariantIndex === 'number'
-    ? variants[configurableVariantIndex].product.id
-    : id);
+const updateAllProductsInCart = (action) => {
+    const { products } = action;
+    const productsInCart = getIndexedParameteredProducts(products);
 
+    BrowserDatabase.setItem(
+        productsInCart,
+        PRODUCTS_IN_CART
+    );
+
+    return { productsInCart };
+};
+
+const initialState = {
+    productsInCart: BrowserDatabase.getItem(PRODUCTS_IN_CART) || {},
+    cartTotals: BrowserDatabase.getItem(CART_TOTALS) || {}
+};
 
 const CartReducer = (state = initialState, action) => {
-    let newState;
-    let products;
+    const { type } = action;
 
-    switch (action.type) {
-    case ADD_PRODUCT_TO_CART:
-        const { newProduct, quantity } = action;
-        const id = getProductId(newProduct);
-
-        products = (state.products[id])
-            ? {
-                ...state.products,
-                [id]: {
-                    ...state.products[id],
-                    quantity: state.products[id].quantity + quantity
-                }
-            }
-            : {
-                ...state.products,
-                [id]: {
-                    ...newProduct,
-                    quantity
-                }
-            };
-        BrowserDatabase.setItem(products, 'cart');
-
+    switch (type) {
+    case UPDATE_ALL_PRODUCTS_IN_CART:
         return {
             ...state,
-            products
+            ...updateAllProductsInCart(action)
         };
-
-    case REMOVE_PRODUCT_FROM_CART:
-        const { product } = action;
-        const deleteProperty = (key, { [key]: _, ...newObj }) => newObj; // it is requred since delete newState.propery will still mutate the original state and redux will not update props
-
-        products = deleteProperty(getProductId(product), state.products);
-        BrowserDatabase.setItem(products || {}, 'cart');
-
-        return { ...state, products };
 
     case UPDATE_TOTALS:
-        const { totals } = action;
-        newState = {
+        return {
             ...state,
-            totals
+            ...updateCartTotals(action, state)
         };
-
-        return newState;
 
     default:
         return state;

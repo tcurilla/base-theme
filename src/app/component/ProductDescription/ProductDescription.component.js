@@ -32,23 +32,27 @@ class ProductDescription extends Component {
             areDetailsLoaded
         } = this.props;
 
+        const { html } = { ...description };
         const image = areDetailsLoaded && mediaGallery.length > 0
             ? `${PRODUCT_IMAGE_PATH}${mediaGallery[0].file}`
             : '';
 
-        if (!description && areDetailsLoaded) return null;
+        if (!html && areDetailsLoaded) return null;
 
         return (
             <ContentWrapper
               mix={ { block: 'ProductDescription' } }
               wrapperMix={ { block: 'ProductDescription', elem: 'Wrapper' } }
-              label="Product description"
+              label={ __('Product description') }
             >
                 <div block="ProductDescription" elem="Image">
-                    <Image ratio="4x3" src={ image } alt="Description image" />
+                    { !image && areDetailsLoaded
+                        ? null
+                        : <Image ratio="4x3" src={ image } alt={ __('Product description image') } />
+                    }
                 </div>
                 <div block="ProductDescription" elem="DescriptionBlock">
-                    <h3><TextPlaceholder content={ areDetailsLoaded ? 'About the product' : '' } /></h3>
+                    <h3><TextPlaceholder content={ areDetailsLoaded ? __('About the product') : '' } /></h3>
                     <div block="ProductDescription" elem="Text">
                         { !areDetailsLoaded ? (
                             <p block="ProductDescription" elem="PlaceholderBlock">
@@ -58,7 +62,7 @@ class ProductDescription extends Component {
                                 <TextPlaceholder length="long" />
                                 <TextPlaceholder length="short" />
                             </p>
-                        ) : <Html content={ description } />}
+                        ) : <Html content={ html } />}
                     </div>
                 </div>
             </ContentWrapper>

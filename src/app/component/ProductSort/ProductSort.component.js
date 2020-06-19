@@ -12,6 +12,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import TextPlaceholder from 'Component/TextPlaceholder';
+import Select from 'Component/Select';
 import './ProductSort.style';
 
 /**
@@ -19,17 +20,6 @@ import './ProductSort.style';
  * @class ProductSort
  */
 class ProductSort extends Component {
-    /**
-     * Handle Sort key change
-     * @param {{target: Object}} value sort key
-     * @return {void}
-     */
-    onGetSortKey({ target: { value } }) {
-        const { onGetSortKey } = this.props;
-
-        onGetSortKey(value);
-    }
-
     /**
      * Handle Sort direction change
      * @return {void}
@@ -39,22 +29,6 @@ class ProductSort extends Component {
         const newSortDirection = sortDirection === 'ASC' ? 'DESC' : 'ASC';
 
         onGetSortDirection(newSortDirection);
-    }
-
-    renderSortOption(option) {
-        return (
-            option.value !== 'size' && option.value !== 'position'
-                && (
-                    <option
-                      block="ProductSort"
-                      elem="Option"
-                      key={ option.value }
-                      value={ option.value }
-                    >
-                        { option.label }
-                    </option>
-                )
-        );
     }
 
     renderPlaceholder() {
@@ -68,7 +42,21 @@ class ProductSort extends Component {
     }
 
     render() {
-        const { value, sortFields, sortDirection } = this.props;
+        const {
+            value,
+            sortFields,
+            sortDirection,
+            onGetKey
+        } = this.props;
+
+        const tempData = [];
+        const selectableOptions = sortFields && sortFields.reduce((selectableOptions, option) => {
+            if (option && option.id !== 'size' && option.id !== 'position') {
+                tempData.push(option);
+            }
+
+            return tempData;
+        });
 
         return (
             sortFields && Object.keys(sortFields).length > 0
@@ -78,24 +66,23 @@ class ProductSort extends Component {
                           block="ProductSort"
                           elem="Label"
                         >
-                            Sort By:
+                            { __('Sort By:') }
                         </span>
-                        <select
+                        <Select
                           block="ProductSort"
                           elem="Select"
-                          value={ value }
-                          onChange={ e => this.onGetSortKey(e) }
-                        >
-                            { sortFields.options && sortFields.options.map(option => this.renderSortOption(option)) }
-                        </select>
+                          id="sort"
+                          options={ selectableOptions }
+                          selectedOption={ value }
+                          onGetKey={ onGetKey }
+                          reference={ false }
+                        />
                         <button
                           block="ProductSort"
                           elem="Switch"
                           onClick={ () => this.onGetSortDirection() }
                         >
-                            {
-                                sortDirection === 'ASC' ? '↑' : '↓'
-                            }
+                            { sortDirection === 'ASC' ? '↑' : '↓' }
                         </button>
                     </div>
                 )
@@ -105,13 +92,18 @@ class ProductSort extends Component {
 }
 
 ProductSort.propTypes = {
-    onGetSortKey: PropTypes.func.isRequired,
+    onGetKey: PropTypes.func.isRequired,
     onGetSortDirection: PropTypes.func.isRequired,
     value: PropTypes.string.isRequired,
     sortDirection: PropTypes.string.isRequired,
     sortFields: PropTypes.oneOfType([
         PropTypes.bool,
-        PropTypes.objectOf(PropTypes.array)
+        PropTypes.arrayOf(
+            PropTypes.shape({
+                id: PropTypes.string,
+                label: PropTypes.string
+            })
+        )
     ]).isRequired
 };
 

@@ -9,17 +9,9 @@
  * @link https://github.com/scandipwa/base-theme
  */
 
-import HeaderAndFooterReducer from './HeaderAndFooter.reducer';
-import HeaderAndFooterDispatcher from './HeaderAndFooter.dispatcher';
-
-import {
-    UPDATE_MENU,
-    updateMenu
-} from './HeaderAndFooter.action';
-
+export * from './HeaderAndFooter.action';
+export { default as HeaderAndFooterReducer } from './HeaderAndFooter.reducer';
 export {
-    HeaderAndFooterReducer,
-    HeaderAndFooterDispatcher,
-    UPDATE_MENU,
-    updateMenu
-};
+    default as HeaderAndFooterDispatcher,
+    HeaderAndFooterDispatcher as HeaderAndFooterDispatcherClass
+} from './HeaderAndFooter.dispatcher';

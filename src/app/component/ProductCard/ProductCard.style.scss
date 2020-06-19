@@ -11,17 +11,20 @@
 
 .ProductCard {
     --card-highlight-color: transparent;
+
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     border: 1px solid var(--card-highlight-color);
+    background-color: var(--color-text-white);
     text-align: center;
     padding-left: 0;
+    min-width: 0;
 
     &:hover {
         --card-highlight-color: var(--color-neutral-light);
     }
-    
+
     &:focus,
     &:focus-within {
         --card-highlight-color: var(--color-primary-base);
@@ -39,13 +42,12 @@
     div {
         color: inherit;
         display: block;
-        padding: 1rem;
         max-width: 100%;
 
-        @include mobile {
-            padding: 0 0 1rem 0;
+        @include after-mobile {
+            padding: 1rem;
         }
-        
+
         &:hover,
         &:focus,
         &:active {
@@ -62,7 +64,7 @@
         font-size: 1rem;
         text-transform: uppercase;
         color: var(--color-neutral-base);
-        
+
         @include mobile {
             max-width: 9.5rem;
             font-size: .8rem;
@@ -74,20 +76,24 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        max-width: 100%;
 
         @include mobile {
-            max-width: 9.5rem;
             font-size: 1rem;
         }
     }
-    
+
     .Image {
         margin-bottom: 1rem;
     }
 
     &-Actions {
+        @include mobile {
+            padding-top: 1rem;
+        }
+
         a {
-            @extend %button;
+            @include button;
 
             span {
                 color: var(--color-text-white);
@@ -108,6 +114,55 @@
                 content: 'a';
                 width: 100%;
                 display: block;
+            }
+
+            &:first-of-type {
+                margin-bottom: 5px;
+            }
+        }
+
+        .ProductWishlistButton {
+            &-Button {
+                margin-left: 0;
+            }
+        }
+    }
+
+    &-ReviewSummary {
+        font-size: 1.1rem;
+        padding-top: 0;
+
+        @include mobile {
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+
+        .ProductReviewRating,
+        a {
+            display: inline-block;
+            padding: 0;
+        }
+
+        .ProductReviewRating {
+            vertical-align: middle;
+
+            @include mobile {
+                font-size: 1.4rem;
+                margin: 0;
+            }
+        }
+
+        a {
+            color: var(--link-color);
+            vertical-align: sub;
+
+            @include mobile {
+                display: block;
+            }
+
+            &:hover,
+            &:focus {
+                text-decoration: underline;
             }
         }
     }

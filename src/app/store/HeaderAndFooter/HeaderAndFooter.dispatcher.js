@@ -9,24 +9,27 @@
  * @link https://github.com/scandipwa/base-theme
  */
 
-import { RequestDispatcher } from 'Util/Request';
+import { QueryDispatcher } from 'Util/Request';
 import { MenuQuery, CmsBlockQuery } from 'Query';
 import { showNotification } from 'Store/Notification';
-import { updateMenu } from 'Store/HeaderAndFooter';
+import { updateMenu, toggleHeaderAndFooter } from 'Store/HeaderAndFooter';
 import { updateCmsBlocks } from 'Store/CmsBlocksAndSlider';
 
-class HeaderAndFooterDispatcher extends RequestDispatcher {
+export class HeaderAndFooterDispatcher extends QueryDispatcher {
     constructor() {
         super('HeaderAndFooter', 86400);
     }
 
-    onSuccess({ menu, cmsBlocks }, dispatch) {
-        dispatch(updateMenu(menu));
-        dispatch(updateCmsBlocks(cmsBlocks));
+    onSuccess(options, dispatch) {
+        if (options) {
+            const { menu, cmsBlocks } = options;
+            dispatch(updateMenu(menu));
+            dispatch(updateCmsBlocks(cmsBlocks));
+        }
     }
 
     onError(error, dispatch) {
-        dispatch(showNotification('error', 'Error fetching Menu!', error));
+        dispatch(showNotification('error', 'Error fetching Header or Footer!', error));
     }
 
     /**
@@ -36,8 +39,14 @@ class HeaderAndFooterDispatcher extends RequestDispatcher {
      * @memberof HeaderAndFooterDispatcher
      */
     prepareRequest(options) {
-        return [MenuQuery.getQuery(options.menu),
-            CmsBlockQuery.getQuery(options.footer)];
+        return [
+            MenuQuery.getQuery(options.menu),
+            CmsBlockQuery.getQuery(options.footer)
+        ];
+    }
+
+    toggleHeaderAndFooter(dispatch, options) {
+        return dispatch(toggleHeaderAndFooter(options.isHeaderAndFooterVisible));
     }
 }
 

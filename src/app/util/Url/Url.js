@@ -10,6 +10,19 @@
  */
 
 /**
+ * Update query params without adding to history
+ * @param {String} name
+ * @param {String} value
+ */
+const updateQueryParamWithoutHistory = (name, value, history, location) => {
+    const { search, pathname } = location;
+
+    const params = new URLSearchParams(search);
+    params.set(name, value);
+    history.replace(decodeURIComponent(`${ pathname }?${ params }`));
+};
+
+/**
  * Get query param from url
  * @param {Object} match match object from react-router
  * @param {Object} location location object from react-router
@@ -18,6 +31,7 @@ const getUrlParam = (match, location) => {
     const baseUrl = match.path;
     const currentUrl = location.pathname;
 
+    if (baseUrl === '/') return currentUrl.replace(baseUrl, '');
     return currentUrl.replace(baseUrl, '').substring(1);
 };
 
@@ -51,7 +65,7 @@ const convertQueryStringToKeyValuePairs = (queryString) => {
         const pair = param.split('=');
         const [keyPair, valuePair] = pair;
 
-        keyValuePairs[keyPair] = valuePair;
+        if (keyPair.length > 0 && valuePair.length > 0) keyValuePairs[keyPair] = valuePair;
     });
 
     return keyValuePairs;
@@ -101,14 +115,8 @@ const convertKeyValuesToQueryString = (keyValuePairs) => {
     return `${newSearchQuery.slice(0, -1)}`; // remove trailing '&'
 };
 
-/**
- * Set add key value pairs to url
- * @param {Object} variable Object with key value pairs to be added to url
- * @param {Object} variable location object from react-router
- * @param {Object} variable react router history object
- * @param {Object} variable is url flush required
- */
-const setQueryParams = (keyValueObject, location, history) => {
+
+const generateQuery = (keyValueObject, location, history) => {
     let query = history.location.search;
 
     Object.entries(keyValueObject).forEach((pair) => {
@@ -129,6 +137,19 @@ const setQueryParams = (keyValueObject, location, history) => {
         }
     });
 
+    return query;
+};
+
+/**
+ * Set add key value pairs to url
+ * @param {Object} variable Object with key value pairs to be added to url
+ * @param {Object} variable location object from react-router
+ * @param {Object} variable react router history object
+ * @param {Object} variable is url flush required
+ */
+const setQueryParams = (keyValueObject, location, history) => {
+    const query = generateQuery(keyValueObject, location, history);
+
     history.push({ search: query });
 };
 
@@ -140,9 +161,26 @@ const clearQueriesFromUrl = (history) => {
     history.push({ search: '' });
 };
 
+/**
+ * Convert object with key value pairs to url query string
+ * @param {Object} keyValuePairs object with key value pairs
+ * @return {String} Converted query string
+ */
+const convertKeyValueObjectToQueryString = (keyValueObject = {}) => {
+    const paramString = Object.entries(keyValueObject).sort()
+        .reduce((acc, [key, value]) => `${acc}&${key}=${value}`, '')
+        .replace('&', '');
+
+    return paramString.length > 0 ? `?${paramString}` : '';
+};
+
 export {
     getUrlParam,
     getQueryParam,
+    generateQuery,
     setQueryParams,
-    clearQueriesFromUrl
+    clearQueriesFromUrl,
+    updateQueryParamWithoutHistory,
+    convertQueryStringToKeyValuePairs,
+    convertKeyValueObjectToQueryString
 };

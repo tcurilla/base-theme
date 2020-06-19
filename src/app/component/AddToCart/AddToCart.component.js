@@ -11,6 +11,7 @@
 
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
+import { ProductType } from 'Type/ProductList';
 import './AddToCart.style';
 
 /**
@@ -20,7 +21,7 @@ import './AddToCart.style';
 class AddToCart extends Component {
     constructor(props) {
         super(props);
-        this.state = { transition: false };
+        this.state = { isLoading: false };
         this.timeOut = null;
     }
 
@@ -39,50 +40,125 @@ class AddToCart extends Component {
         }, 1500);
     }
 
+    afterAdded() {
+        const {
+            productToBeRemovedAfterAdd,
+            removeProductFromWishlist,
+            wishlistItems,
+            product,
+            removeWishlistItem
+        } = this.props;
+
+        const { sku, id } = product;
+
+        // for configurable products productToBeRemovedAfterAdd will be saved in state
+        if (removeWishlistItem || (productToBeRemovedAfterAdd === sku && wishlistItems[id])) {
+            const product = wishlistItems[id];
+
+            removeProductFromWishlist({ product, noMessages: true });
+        }
+
+        this.setState({ isLoading: false });
+    }
+
     /**
      * Button click listener
      * @return {void}
      */
     buttonClick() {
-        const { onClick } = this.props;
+        const {
+            product,
+            configurableVariantIndex,
+            groupedProductQuantity,
+            quantity,
+            addProduct
+        } = this.props;
+        const { variants, type_id } = product;
 
-        if (this.timeOut) {
-            clearTimeout(this.timeOut);
-            this.timeOut = this.setAnimationTimeout();
-        } else {
-            this.timeOut = this.setAnimationTimeout();
-            this.setState(({ transition }) => ({ transition: !transition }));
+        this.setState({ isLoading: true });
+
+        if (type_id === 'grouped') {
+            const { items } = product;
+            Promise.all(items.map((item) => {
+                // TODO: TEST
+                const { product: groupedProductItem } = item;
+                const {
+                    items: deletedItems,
+                    ...parentProduct
+                } = product;
+
+                groupedProductItem.parent = parentProduct;
+
+                return addProduct({
+                    product: groupedProductItem,
+                    quantity: groupedProductQuantity[groupedProductItem.id]
+                });
+            })).then(() => this.afterAdded());
         }
 
-        onClick();
+        const productToAdd = variants
+            ? {
+                ...product,
+                configurableVariantIndex
+            }
+            : product;
+
+        return addProduct({
+            product: productToAdd,
+            quantity
+        }).then(() => this.afterAdded());
     }
 
     render() {
-        const { transition } = this.state;
-        const { fullWidth } = this.props;
+        const { isLoading } = this.state;
+        const {
+            fullWidth,
+            product: {
+                type_id,
+                stock_status,
+                variants = []
+            },
+            configurableVariantIndex
+        } = this.props;
+
+        const isNotAvailable = stock_status !== 'IN_STOCK';
+        const isNotVariantAvailable = type_id === 'configurable' && !variants[configurableVariantIndex];
 
         return (
             <button
               onClick={ () => this.buttonClick() }
               block="AddToCart"
               elem="Button"
-              mods={ { animated: transition, fullWidth } }
-              disabled={ transition }
+              mods={ { isLoading, fullWidth } }
+              disabled={ isLoading || isNotAvailable || isNotVariantAvailable }
             >
-                <span>Add to cart</span>
-                <span>Adding...</span>
+                <span>{ __('Add to cart') }</span>
+                <span>{ __('Adding...') }</span>
             </button>
         );
     }
 }
 
 AddToCart.propTypes = {
-    onClick: PropTypes.func.isRequired,
+    product: ProductType.isRequired,
+    quantity: PropTypes.number,
+    configurableVariantIndex: PropTypes.number,
+    groupedProductQuantity: PropTypes.objectOf(PropTypes.number),
+    addProduct: PropTypes.func.isRequired,
+    productToBeRemovedAfterAdd: PropTypes.string,
+    removeProductFromWishlist: PropTypes.func.isRequired,
+    wishlistItems: PropTypes.objectOf(ProductType).isRequired,
+    removeWishlistItem: PropTypes.bool,
     fullWidth: PropTypes.bool
 };
 
 AddToCart.defaultProps = {
-    fullWidth: false
+    fullWidth: false,
+    quantity: 1,
+    configurableVariantIndex: 0,
+    groupedProductQuantity: {},
+    productToBeRemovedAfterAdd: '',
+    removeWishlistItem: false
 };
 
 export default AddToCart;

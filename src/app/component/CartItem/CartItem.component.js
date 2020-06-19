@@ -16,7 +16,9 @@ import TextPlaceholder from 'Component/TextPlaceholder';
 import Image from 'Component/Image';
 import ProductPrice from 'Component/ProductPrice';
 import Field from 'Component/Field';
+import Loader from 'Component/Loader';
 import { ProductType } from 'Type/ProductList';
+import { convertKeyValueObjectToQueryString } from 'Util/Url';
 import './CartItem.style';
 
 /**
@@ -24,6 +26,14 @@ import './CartItem.style';
  * @class CartItem
  */
 class CartItem extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            isLoading: false
+        };
+    }
+
     /**
      * Get link to product page
      * @param url_key Url to product
@@ -31,11 +41,33 @@ class CartItem extends Component {
      */
     getProductLinkTo(url_key) {
         if (!url_key) return undefined;
+        const {
+            product,
+            product: {
+                type_id,
+                configurable_options,
+                configurableVariantIndex,
+                parent,
+                variants = []
+            }
+        } = this.props;
 
-        const { product: { configurableVariantIndex }, product } = this.props;
-        const variantIndex = configurableVariantIndex;
+        if (type_id === 'simple') return { pathname: `/product/${ url_key }` };
 
-        return { pathname: `/product/${ url_key }`, state: { product, variantIndex } };
+        const { attributes } = variants[configurableVariantIndex];
+
+        const parameters = Object.entries(attributes).reduce(
+            (parameters, [code, { attribute_value }]) => {
+                if (Object.keys(configurable_options).includes(code)) return { ...parameters, [code]: attribute_value };
+                return parameters;
+            }, {}
+        );
+
+        return {
+            pathname: `/product/${ url_key }`,
+            state: { product: parent || product },
+            search: convertKeyValueObjectToQueryString(parameters)
+        };
     }
 
     /**
@@ -61,15 +93,11 @@ class CartItem extends Component {
      */
     handleChangeQuantity(value) {
         const { addProduct, product, product: { quantity } } = this.props;
-        let newQuantity;
-
-        if (quantity < value) {
-            newQuantity = 1;
-        } else {
-            newQuantity = -1;
-        }
-
-        addProduct({ product, quantity: newQuantity });
+        const newQuantity = quantity < value ? 1 : -1;
+        this.setState({ isLoading: true });
+        addProduct({ product, quantity: newQuantity }).then(
+            () => this.setState({ isLoading: false })
+        );
     }
 
     /**
@@ -78,6 +106,7 @@ class CartItem extends Component {
      */
     handleRemoveItem() {
         const { removeProduct, product } = this.props;
+        this.setState({ isLoading: true });
         removeProduct({ product });
     }
 
@@ -92,7 +121,7 @@ class CartItem extends Component {
         onItemClick();
     }
 
-    renderItemTitle(url_key, name, manufacturer) {
+    renderItemTitle(url_key, name, brand) {
         return (
             <div block="CartItem" elem="Title">
                 <Link
@@ -100,7 +129,7 @@ class CartItem extends Component {
                     // TODO: replace from configuration file
                   to={ this.getProductLinkTo(url_key) }
                 >
-                    { manufacturer && <span>{ manufacturer }</span> }
+                    { brand && <span>{ brand }</span> }
                     <p><TextPlaceholder content={ name } /></p>
                 </Link>
             </div>
@@ -114,10 +143,10 @@ class CartItem extends Component {
               elem="Details"
             >
                 <Field
-                  id="QtySelector"
-                  type="number"
                   block="CartItem"
                   elem="QtySelector"
+                  id="QtySelector"
+                  type="number"
                   value={ quantity }
                   onChange={ quantity => this.handleChangeQuantity(quantity) }
                 />
@@ -129,8 +158,9 @@ class CartItem extends Component {
     }
 
     render() {
+        const { isLoading } = this.state;
         const {
-            thumbnail,
+            thumbnail: { path: thumbnail },
             url_key,
             name,
             quantity,
@@ -140,19 +170,19 @@ class CartItem extends Component {
 
         return (
             <li block="CartItem" aria-label="Cart Item">
+                <Loader isLoading={ isLoading } />
                 <div
                   block="CartItem"
                   elem="Thumbnail"
-                  aria-label="Cart Thumbnail"
                 >
                     <Link to={ this.getProductLinkTo(url_key) } onClick={ () => this.handleItemClick }>
-                        <Image src={ `/media/catalog/product${thumbnail}` } alt="Cart Thumbnail" />
+                        <Image src={ `/media/catalog/product${thumbnail}` } alt={ __('Cart Thumbnail') } />
                     </Link>
                 </div>
                 <div
                   block="CartItem"
                   elem="Info"
-                  aria-label="Cart Info"
+                  aria-label={ __('Cart Info') }
                 >
                     { url_key && this.renderItemTitle(url_key, name, brand || '') }
                     { quantity && this.renderItemDetails(quantity, price) }
@@ -160,10 +190,9 @@ class CartItem extends Component {
                 <button
                   block="CartItem"
                   elem="RemoveButton"
-                  aria-label="Remove Item"
                   onClick={ () => this.handleRemoveItem() }
                 >
-                    <span block="CartItem" elem="RemoveIcon" aria-hidden="true" aria-label="Remove Item" />
+                    <span block="CartItem" elem="RemoveIcon" aria-hidden="true" aria-label={ __('Remove item') } />
                 </button>
             </li>
         );

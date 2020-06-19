@@ -45,6 +45,11 @@ module.exports = {
             '.jsx',
             '.scss',
             '*'
+        ],
+        plugins: [
+            new FallbackPlugin({
+                fallbackRoot, projectRoot
+            })
         ]
     },
 
@@ -118,7 +123,7 @@ module.exports = {
         }),
 
         new HtmlWebpackPlugin({
-            template: path.resolve(projectRoot, 'src', 'public', 'index.html'),
+            template: path.resolve(projectRoot, 'src', 'public', 'index.production.html'),
             filename: '../templates/root.phtml',
             inject: false,
             hash: true,
@@ -140,8 +145,13 @@ module.exports = {
         new webpack.DefinePlugin({
             'process.env': {
                 REBEM_MOD_DELIM: JSON.stringify('_'),
-                REBEM_ELEM_DELIM: JSON.stringify('-')
+                REBEM_ELEM_DELIM: JSON.stringify('-'),
+                MAGENTO_VERSION: JSON.stringify('2.3.1')
             }
+        }),
+
+        new webpack.ProvidePlugin({
+            __: path.resolve(path.join(__dirname, 'TranslationFunction'))
         }),
 
         new CleanWebpackPlugin([
@@ -156,10 +166,6 @@ module.exports = {
         new CopyWebpackPlugin([
             { from: path.resolve(projectRoot, 'src', 'public', 'assets'), to: './assets' }
         ]),
-
-        new FallbackPlugin({
-            fallbackRoot
-        }),
 
         new MinifyPlugin({
             removeConsole: true,

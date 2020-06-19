@@ -15,7 +15,7 @@ import { MediaType } from 'Type/ProductList';
 import Slider from 'Component/Slider';
 import './ProductGallery.style';
 
-const PRODUCT_IMAGE_PATH = 'catalog/product';
+const PRODUCT_IMAGE_PATH = '/media/catalog/product';
 
 /**
  * Product gallery
@@ -23,12 +23,25 @@ const PRODUCT_IMAGE_PATH = 'catalog/product';
  */
 class ProductGallery extends Component {
     render() {
-        const { mediaGallery, thumbnail, areDetailsLoaded } = this.props;
+        const {
+            mediaGallery,
+            thumbnail: { path },
+            thumbnail,
+            areDetailsLoaded
+        } = this.props;
 
         // use images from gallery or fallback to thumbnail
         const gallery = mediaGallery.length
-            ? mediaGallery.map(media => ({ id: media.id, image: `jpg/${PRODUCT_IMAGE_PATH}${media.file}` }))
-            : [{ image: thumbnail && `jpg/${PRODUCT_IMAGE_PATH}${thumbnail}`, id: 'thumbnail' }];
+            ? mediaGallery.map((media, i) => ({ id: `id_${i}`, image: `${PRODUCT_IMAGE_PATH}${media.file}` }))
+            : [{ image: thumbnail && path && `${PRODUCT_IMAGE_PATH}${path}`, id: 'id_0' }];
+
+        if (!mediaGallery.length && areDetailsLoaded) {
+            return (
+                <div block="ProductGallery" mods={ { isNotAvailable: true } }>
+                    <p>This product does not have image.</p>
+                </div>
+            );
+        }
 
         return (
             <Slider
@@ -46,13 +59,13 @@ class ProductGallery extends Component {
 
 ProductGallery.propTypes = {
     mediaGallery: MediaType,
-    thumbnail: PropTypes.string,
+    thumbnail: PropTypes.shape({ path: PropTypes.string }),
     areDetailsLoaded: PropTypes.bool.isRequired
 };
 
 ProductGallery.defaultProps = {
     mediaGallery: [],
-    thumbnail: ''
+    thumbnail: {}
 };
 
 export default ProductGallery;

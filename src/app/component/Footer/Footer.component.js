@@ -10,6 +10,7 @@
  */
 
 import React, { Component } from 'react';
+import PropTypes from 'prop-types';
 import { BlockListType } from 'Type/CMS';
 import ContentWrapper from 'Component/ContentWrapper';
 import Html from 'Component/Html';
@@ -21,12 +22,15 @@ import './Footer.style';
  */
 class Footer extends Component {
     render() {
-        const { blocks: { items } } = this.props;
+        const { blocks: { items }, isHeaderAndFooterVisible } = this.props;
         const getContent = id => ((items && items[id]) ? items[id].content : '');
 
         return (
             <footer block="Footer" aria-label="Footer">
-                <ContentWrapper mix={ { block: 'Footer', elem: 'Content' } } label="Website footer content">
+                <ContentWrapper
+                  mix={ { block: 'Footer', elem: 'Content', mods: { isVisible: isHeaderAndFooterVisible } } }
+                  label={ __('Website footer content') }
+                >
                     <div block="Footer" elem="Promo">
                         <Html content={ getContent('footer-free-shipping') } />
                         <Html content={ getContent('footer-online-support') } />
@@ -42,7 +46,7 @@ class Footer extends Component {
                 <div block="Footer" elem="Copyright">
                     <ContentWrapper
                       wrapperMix={ { block: 'Footer', elem: 'CopyrightContent' } }
-                      label="Website copyright"
+                      label={ __('Website copyright') }
                     >
                         <Html content={ getContent('footer-copyright-text') } />
                         <Html content={ getContent('footer-payment-options') } />
@@ -54,7 +58,8 @@ class Footer extends Component {
 }
 
 Footer.propTypes = {
-    blocks: BlockListType.isRequired
+    blocks: BlockListType.isRequired,
+    isHeaderAndFooterVisible: PropTypes.bool.isRequired
 };
 
 export default Footer;

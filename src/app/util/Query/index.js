@@ -9,12 +9,6 @@
  * @link https://github.com/scandipwa/base-theme
  */
 
-import Field from './Field';
-import Fragment from './Fragment';
-import { prepareQuery } from './PrepareQuery';
-
-export {
-    Field,
-    Fragment,
-    prepareQuery
-};
+export * from './PrepareDocument';
+export { default as Field } from './Field';
+export { default as Fragment } from './Fragment';

@@ -8,6 +8,34 @@
  * @package scandipwa/base-theme
  * @link https://github.com/scandipwa/base-theme
  */
+@keyframes maskAnimation {
+    0% {
+        mask-size: 100%;
+        mask-position: center;
+    }
+
+    50% {
+        mask-position: center;
+        mask-size: 300%;
+    }
+
+    100% {
+        mask-position: center;
+        mask-size: 1000%;
+    }
+}
+
+@keyframes maskFinishAnimation {
+    0% {
+        mask-size: 1000%;
+        mask-position: center;
+        mask: radial-gradient(ellipse, black 30%, transparent 61%, transparent 100%), radial-gradient(circle, black 24%, transparent 60%, transparent 100%);
+    }
+
+    100% {
+        mask: 0;
+    }
+}
 
 .Image {
     display: inline-block;
@@ -19,7 +47,7 @@
     background-image: var(--placeholder-image);
     background-size: var(--placeholder-size);
     animation: var(--placeholder-animation);
-    
+
     &_ratio {
         &_16x9 {
             padding-bottom: 56.25%;
@@ -40,28 +68,47 @@
         mask: radial-gradient(ellipse, black 30%, transparent 61%, transparent 100%), radial-gradient(circle, black 24%, transparent 60%, transparent 100%);
     }
 
-    &_isLoaded.Image_isReal {
-        @keyframes maskAnimation {
-            0% {
-                mask-size: 100%;
-                mask-position: center;
-                animation-timing-function: ease-in-out;
-            }
-        
-            50% {
-                mask-position: center;
-                mask-size: 300%;
-                animation-timing-function: ease-in-out;
-            }
-            
-            100% {
-                mask-position: center;
-                mask-size: 1000%;
-                animation-timing-function: ease-in-out;
-            }
-          }
+    &_isLoaded {
+        animation: none;
+        background: transparent;
+    }
 
-          animation: maskAnimation .5s forwards;
+    &_isLoaded.Image_isReal {
+        animation: maskAnimation .5s forwards ease-in-out, maskFinishAnimation 0s .5s forwards ease-in-out;
+    }
+
+    &_isImageMissing {
+        mask: none;
+        animation: none;
+        appearance: none;
+
+        &:-moz-broken{
+            opacity: 0;
+        }
+
+        &::after {
+            content: 'Missing image';
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            background: repeating-linear-gradient(
+                -55deg,
+                #efefef,
+                #efefef 10px,
+                #fff 10px,
+                #fff 20px
+            );
+            color: #000;
+            text-transform: none;
+            font-weight: normal;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: auto;
+            text-align: center;
+        }
     }
 
     > * {

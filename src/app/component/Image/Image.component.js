@@ -27,15 +27,17 @@ class Image extends Component {
 
         this.state = {
             isImageLoaded: false,
-            showImage: false
+            showImage: false,
+            isImageMissing: false
         };
 
         this.observer = null;
+        this.onLoadingError = this.onLoadingError.bind(this);
     }
 
     componentDidMount() {
         if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(() => this.showImage(), { timeout: 200 });
+            window.requestIdleCallback(() => this.showImage(), { timeout: 50 });
         } else {
             setTimeout(this.showImage(), 1);
         }
@@ -45,14 +47,27 @@ class Image extends Component {
         this.stopObserving();
     }
 
+    onLoadingError() {
+        this.setState({ isImageMissing: true })
+    }
+
     /**
      * Listens for every picture element load
      * @param {Object} img SyntheticEvent
      * @return {void}
      */
     onImageLoad(img) {
-        if (img.target.currentSrc.includes('.webp')
-        || img.target.currentSrc.includes('.jpg')) this.setState({ isImageLoaded: true });
+        const isPlacehodlerLoaded = (img.target.currentSrc.includes('.svg'));
+        const isImageLoaded = (img.target.currentSrc.includes('.webp')
+            || img.target.currentSrc.includes('.jpg'));
+
+        if (isImageLoaded) {
+            this.setState({ isImageLoaded });
+        }
+
+        if (isPlacehodlerLoaded) {
+            this.setState({ isPlacehodlerLoaded });
+        }
     }
 
     /**
@@ -61,6 +76,7 @@ class Image extends Component {
      * @return {void}
      */
     getUrlWithExtension(url, extension) {
+        // return url;
         if (url) {
             const path = url.includes('/media/jpg')
                 ? url.replace('/media/jpg', `/media/${ extension }`)
@@ -126,7 +142,9 @@ class Image extends Component {
     render() {
         const {
             isImageLoaded,
-            showImage
+            showImage,
+            isPlacehodlerLoaded,
+            isImageMissing
         } = this.state;
 
         const {
@@ -137,6 +155,14 @@ class Image extends Component {
             showGreyPlaceholder
         } = this.props;
 
+        const isPathRelative = (path) => {
+            const isFullPath = path.match(new RegExp('^(http|https)://'));
+
+            return path.charAt(0) === '/' || isFullPath;
+        };
+
+        if (src && !isPathRelative(src)) throw new Error(`${src} is not an absolute path!`);
+
         const isIcon = src && src.includes('.svg');
 
         return (
@@ -144,17 +170,19 @@ class Image extends Component {
               block="Image"
               mods={ {
                   ratio,
-                  isLoaded: isImageLoaded,
-                  isReal: !!src && !showGreyPlaceholder
+                  isLoaded: isImageLoaded || (isIcon && isPlacehodlerLoaded),
+                  isReal: !!src && !showGreyPlaceholder,
+                  isImageMissing
               } }
               ref={ (node) => { this.node = node; } }
               onLoad={ img => this.onImageLoad(img) }
+              onError={ this.onLoadingError }
             >
                 { (!arePlaceholdersShown || showImage) && src && !isIcon
                     && <>
-                        <source srcSet={ this.getUrlWithExtension(src, 'webp') } type="image/webp" />
+                        <source srcSet={ src && this.getUrlWithExtension(src, 'webp') } type="image/webp" />
                         <source srcSet={ src } type="image/jpeg" />
-                        <source srcSet={ src.replace('/media/jpg', '/media') } />
+                        <source srcSet={ src && src.replace('/media/jpg', '/media') } />
                     </>
                 }
                 { src && <img src={ this.getUrlWithExtension(src, 'svg') } alt={ alt } /> }

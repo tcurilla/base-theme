@@ -64,25 +64,31 @@ class RelatedProducts extends Component {
             <ContentWrapper
               mix={ { block: 'RelatedProducts' } }
               wrapperMix={ { block: 'RelatedProducts', elem: 'Wrapper' } }
-              label="Related products"
+              label={ __('Related products') }
             >
                 <h3 block="RelatedProducts" elem="Title">
                     <TextPlaceholder
-                      content={ relatedProductsLoaded ? 'Members Who Bought This Item Also Bought' : '' }
+                      content={ relatedProductsLoaded ? __('Members Who Bought This Item Also Bought') : '' }
                     />
                 </h3>
                 <ul block="RelatedProducts" elem="List">
                     {
                         items
-                            ? items.map(product => <ProductCard product={ product } key={ product.id } />)
-                            : (
-                                <>
-                                    <ProductCard product={ {} } />
-                                    <ProductCard product={ {} } />
-                                    <ProductCard product={ {} } />
-                                    <ProductCard product={ {} } />
-                                </>
-                            )
+                            ? items.map(product => (
+                                <ProductCard
+                                  mix={ { block: 'RelatedProducts', elem: 'Card' } }
+                                  product={ product }
+                                  key={ product.id }
+                                />
+                            ))
+                            : Array(4).fill().map((_, i) => (
+                                <ProductCard
+                                  // eslint-disable-next-line react/no-array-index-key
+                                  key={ i }
+                                  product={ {} }
+                                  mix={ { block: 'RelatedProducts', elem: 'Card' } }
+                                />
+                            ))
                     }
                 </ul>
             </ContentWrapper>

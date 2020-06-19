@@ -16,8 +16,9 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import RangeSelector from 'Component/RangeSelector';
+import CategorySearch from 'Component/CategorySearch';
 import TextPlaceholder from 'Component/TextPlaceholder';
-import Swatch from 'Component/Swatch';
+import ProductConfigurableAttributes from 'Component/ProductConfigurableAttributes';
 import './CategoryShoppingOptions.style';
 
 /**
@@ -28,18 +29,60 @@ class CategoryShoppingOptions extends Component {
     constructor(props) {
         super(props);
 
+        this.getFilterUrl = this.getFilterUrl.bind(this);
+        this.updateFilter = this.updateFilter.bind(this);
+
         this.state = {
             optionsVisible: false
         };
     }
 
     /**
-     * Open/Close shoping options on mobile
-     * @return {void}
+     * Returns filter array with new parameters
+     *
+     * @param {String} filterKey key of option
+     * @param {String} value
+     * @returns {Object[]}
+     * @memberof CategoryShoppingOptions
      */
-    toggleOptions() {
-        const { optionsVisible } = this.state;
-        this.setState({ optionsVisible: !optionsVisible });
+    getNewFilterArray(filterKey, value) {
+        const { customFiltersValues } = this.props;
+        const newFilterArray = customFiltersValues[filterKey] !== undefined
+            ? Array.from(customFiltersValues[filterKey])
+            : [];
+        const filterValueIndex = newFilterArray.indexOf(value);
+
+        if (filterValueIndex === -1) {
+            newFilterArray.push(value);
+        } else {
+            newFilterArray.splice(filterValueIndex, 1);
+        }
+
+        return newFilterArray;
+    }
+
+    /**
+     * Get URL for new filter value
+     *
+     * @param {*} filterKey
+     * @param {*} value
+     * @returns {String} new URL path
+     * @memberof CategoryShoppingOptions
+     */
+    getFilterUrl(filterKey, value) {
+        const { getFilterUrl } = this.props;
+
+        return getFilterUrl(filterKey, this.getNewFilterArray(filterKey, value));
+    }
+
+    /**
+     * Update filter when new filter is selected
+     * @return {Boolean}
+     */
+    updateFilter(requestVar, value) {
+        const { updateFilter } = this.props;
+
+        updateFilter(requestVar, this.getNewFilterArray(requestVar, value));
     }
 
     /**
@@ -51,31 +94,24 @@ class CategoryShoppingOptions extends Component {
             customFiltersValues,
             sortKey,
             sortDirection,
-            priceValue,
+            searchValue,
+            priceValue: { min, max },
             minPriceValue,
             maxPriceValue
         } = this.props;
 
-        const isPriceCustom = priceValue.min !== minPriceValue || priceValue.max !== maxPriceValue;
-        return Object.keys(customFiltersValues).length > 0 || isPriceCustom || !(sortKey || sortDirection);
+        const isPriceCustom = min !== minPriceValue || max !== maxPriceValue;
+        return Object.keys(customFiltersValues).length > 0
+            || searchValue || isPriceCustom || !(sortKey || sortDirection);
     }
 
     /**
-     * Update filter when new filter is selected
-     * @return {Boolean}
+     * Open/Close shoping options on mobile
+     * @return {void}
      */
-    toggleCustomFilter(requestVar, value) {
-        const { updateFilter, customFiltersValues } = this.props;
-        const newFilterArray = customFiltersValues[requestVar] ? customFiltersValues[requestVar] : [];
-        const filterValueIndex = newFilterArray.indexOf(value);
-
-        if (filterValueIndex === -1) {
-            newFilterArray.push(value);
-        } else {
-            newFilterArray.splice(filterValueIndex, 1);
-        }
-
-        updateFilter(requestVar, newFilterArray);
+    toggleOptions() {
+        const { optionsVisible } = this.state;
+        this.setState({ optionsVisible: !optionsVisible });
     }
 
     renderFilterTitle(title) {
@@ -104,102 +140,59 @@ class CategoryShoppingOptions extends Component {
         );
     }
 
-    renderFilterItems(requestVar, filterItems) {
-        const { customFiltersValues } = this.props;
-        const filterIsColor = requestVar === 'color';
-        const currentFilterArray = customFiltersValues[requestVar] ? customFiltersValues[requestVar] : [];
+    renderCustomFilters(isLoaded) {
+        const { availableFilters, customFiltersValues } = this.props;
 
-        return filterItems.map(({ swatch_data, label, value_string }) => {
-            const title = (swatch_data && swatch_data.value) || label;
-            const isSelected = currentFilterArray.indexOf(value_string) !== -1;
-            const dynamicStyle = filterIsColor ? title : '';
-
-            return (
-                <li key={ value_string }>
-                    <Swatch
-                      title={ filterIsColor ? '' : title }
-                      isSelected={ isSelected }
-                      isRound={ filterIsColor }
-                      backgroundColor={ dynamicStyle }
-                      handler={ () => this.toggleCustomFilter(requestVar, value_string) }
-                    />
-                </li>
-            );
-        });
+        return (
+            <ProductConfigurableAttributes
+              isReady={ isLoaded }
+              configurable_options={ availableFilters }
+              getLink={ this.getFilterUrl }
+              parameters={ customFiltersValues }
+              updateConfigurableVariant={ this.updateFilter }
+            />
+        );
     }
 
-    renderCustomFilters() {
-        const { availableFilters } = this.props;
+    renderSearchBar() {
+        const { searchValue, updateSearch, showSearch } = this.props;
 
-        return availableFilters.map(({ name, request_var, filter_items }) => {
-            if (request_var !== 'cat') {
-                return (
-                    <li block="CategoryShoppingOptions" elem="FilterBlock" key={ name }>
-                        { this.renderFilterTitle(name) }
-                        <ul block="CategoryShoppingOptions" elem="Swatches">
-                            { this.renderFilterItems(request_var, filter_items) }
-                        </ul>
-                    </li>
-                );
-            }
+        if (!showSearch) return null;
 
-            return null;
-        });
+        return (
+            <li block="CategoryShoppingOptions" elem="SearchBar">
+                { this.renderFilterTitle('Search') }
+                <CategorySearch
+                  value={ searchValue }
+                  onChange={ value => updateSearch(value) }
+                />
+            </li>
+        );
     }
 
     renderClearFiltersButton() {
         const { clearFilters } = this.props;
 
-        if (window.location.search && this.isClearButtonShown()) { // ok to use window object for simple check...?
-            return (
-                <button
-                  block="CategoryShoppingOptions"
-                  elem="ClearButton"
-                  onClick={ () => clearFilters() }
-                >
-                    Clear
-                </button>
-            );
-        }
+        if (!window.location.search) return null; // bad, that we are showing this on page
 
-        return null;
-    }
-
-    renderPlaceholderSwatch(amountOfSwathces) {
         return (
-            <li block="CategoryShoppingOptions" elem="FilterBlock">
-                { this.renderFilterTitle() }
-                <ul block="CategoryShoppingOptions" elem="Swatches">
-                    { Array(amountOfSwathces).fill().map((_, i) => (
-                        // eslint-disable-next-line react/no-array-index-key
-                        <li key={ i }>
-                            <Swatch />
-                        </li>
-                    )) }
-                </ul>
-            </li>
+            <button
+              block="CategoryShoppingOptions"
+              elem="ClearButton"
+              onClick={ () => clearFilters() }
+            >
+                { __('Clear Filters') }
+            </button>
         );
     }
 
     renderElements(isLoaded) {
         return (
             <ul block="CategoryShoppingOptions" elem="Wrapper">
-                { isLoaded
-                    ? (
-                        <>
-                            { this.renderCustomFilters() }
-                            { this.renderPriceFilter() }
-                            { this.renderClearFiltersButton() }
-                        </>
-                    )
-                    : (
-                        <>
-                            { this.renderPlaceholderSwatch(6) }
-                            { this.renderPlaceholderSwatch(10) }
-                            { this.renderPlaceholderSwatch(5) }
-                        </>
-                    )
-                }
+                { this.renderClearFiltersButton() }
+                { this.renderSearchBar() }
+                { this.renderCustomFilters(isLoaded) }
+                { this.renderPriceFilter() }
             </ul>
         );
     }
@@ -207,7 +200,7 @@ class CategoryShoppingOptions extends Component {
     render() {
         const { availableFilters } = this.props;
         const { optionsVisible } = this.state;
-        const isLoaded = availableFilters && !!availableFilters.length;
+        const isLoaded = availableFilters && !!Object.keys(availableFilters).length;
 
         return (
             <div block="CategoryShoppingOptions" mods={ { optionsVisible } }>
@@ -217,7 +210,7 @@ class CategoryShoppingOptions extends Component {
                   mods={ { isLoaded } }
                   onClick={ () => this.toggleOptions() }
                 >
-                    <TextPlaceholder content={ isLoaded ? 'Shopping Options' : '' } />
+                    <TextPlaceholder content={ isLoaded ? __('Shopping Options') : '' } />
                 </h3>
                 { this.renderElements(isLoaded) }
             </div>
@@ -228,17 +221,26 @@ class CategoryShoppingOptions extends Component {
 CategoryShoppingOptions.propTypes = {
     updatePriceRange: PropTypes.func.isRequired,
     updateFilter: PropTypes.func.isRequired,
+    getFilterUrl: PropTypes.func.isRequired,
+    updateSearch: PropTypes.func.isRequired,
+    showSearch: PropTypes.bool,
+    searchValue: PropTypes.string,
     priceValue: PropTypes.shape({
         min: PropTypes.number,
         max: PropTypes.number
     }).isRequired,
     minPriceValue: PropTypes.number.isRequired,
     maxPriceValue: PropTypes.number.isRequired,
-    availableFilters: PropTypes.arrayOf(PropTypes.shape).isRequired,
+    availableFilters: PropTypes.objectOf(PropTypes.shape).isRequired,
     customFiltersValues: PropTypes.objectOf(PropTypes.array).isRequired,
     clearFilters: PropTypes.func.isRequired,
     sortKey: PropTypes.string.isRequired,
     sortDirection: PropTypes.string.isRequired
+};
+
+CategoryShoppingOptions.defaultProps = {
+    searchValue: '',
+    showSearch: false
 };
 
 export default CategoryShoppingOptions;
